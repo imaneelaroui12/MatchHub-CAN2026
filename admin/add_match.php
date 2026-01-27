@@ -80,6 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     <br>
     <a href="dashboard.php">Retour au tableau de bord</a>
+    <a href="matches.php">⬅ Retour à la liste</a>
 
 </body>
 </html>
