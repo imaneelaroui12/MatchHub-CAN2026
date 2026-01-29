@@ -1,33 +1,43 @@
 <?php
-/* FICHIER : login.php */
-session_start(); // On démarre la session (la mémoire du navigateur)
+/* FICHIER : login.php (Version compatible Base de Données Collègue) */
+session_start();
 require_once 'config/db.php';
 
 $error = "";
 
 // Si le formulaire est envoyé
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'];
+    // 1. On récupère l'email (et plus le username)
+    $email = $_POST['email']; 
     $password = $_POST['password'];
 
-    // On cherche l'utilisateur dans la base
-    $sql = "SELECT * FROM users WHERE username = ?";
+    // 2. On cherche l'utilisateur par son EMAIL
+    $sql = "SELECT * FROM users WHERE email = ?";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$username]);
+    $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Vérification simple (Attention: pour un vrai site pro, on crypterait le mot de passe)
+    // 3. Vérification du mot de passe
+    // Note : Dans un vrai projet, on utiliserait password_verify(), mais ta collègue n'a pas haché les mots de passe
     if ($user && $password === $user['password']) {
-        // C'est gagné ! On enregistre l'identité dans la session
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
+        
+        // 4. On enregistre les bonnes infos en session
+        // ATTENTION : Dans sa base, c'est 'id_user' et 'nom'
+        $_SESSION['user_id'] = $user['id_user']; 
+        $_SESSION['username'] = $user['nom']; // On garde 'username' pour l'affichage, mais on y met le nom
         $_SESSION['role'] = $user['role'];
 
-        // On redirige vers l'admin
-        header("Location: admin/matches.php");
-        exit;
+       // LOGIQUE DE REDIRECTION SELON LE RÔLE
+if ($user['role'] === 'admin') {
+    // Si c'est l'admin, il va gérer les matchs
+    header("Location: admin/matches.php");
+} else {
+    // Si c'est un supporter, il retourne à l'accueil pour acheter
+    header("Location: index.php");
+}
+exit;
     } else {
-        $error = "Identifiants incorrects !";
+        $error = "Email ou mot de passe incorrect !";
     }
 }
 ?>
@@ -36,29 +46,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Connexion - MatchHub</title>
+    <title>Connexion - CAN 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; }
-        .login-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
-        .error { color: red; font-size: 0.9em; }
+        body { font-family: 'Poppins', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
+        .login-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        h2 { color: #991b1b; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; box-sizing: border-box; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; }
+        button { width: 100%; padding: 12px; background: #064e3b; color: white; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        button:hover { background: #0d7a5d; }
+        .error { color: red; font-size: 0.9em; margin-bottom: 10px; }
+        .back-link { display: block; margin-top: 15px; color: #666; text-decoration: none; font-size: 0.9rem; }
+        .back-link:hover { color: #000; }
     </style>
 </head>
 <body>
 
     <div class="login-box">
-        <h2 style="text-align:center">Espace Admin</h2>
+        <h2>Espace Admin</h2>
         
         <?php if ($error): ?>
             <p class="error"><?= $error ?></p>
         <?php endif; ?>
 
         <form method="POST">
-            <input type="text" name="username" placeholder="Nom d'utilisateur" required>
+            <input type="email" name="email" placeholder="Email (ex: admin@can2026.ma)" required>
             <input type="password" name="password" placeholder="Mot de passe" required>
             <button type="submit">Se connecter</button>
         </form>
+
+        <a href="index.php" class="back-link">← Retour au site</a>
     </div>
 
 </body>

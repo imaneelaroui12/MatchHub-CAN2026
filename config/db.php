@@ -1,6 +1,6 @@
 <?php
 $host = 'localhost';
-$dbname = 'matchhub_db'; // Doit être identique au nom créé dans phpmyadmin
+$dbname = 'can_maroc_2026'; // Doit être identique au nom créé dans phpmyadmin
 $username = 'root';      // Par défaut sur XAMPP
 $password = '';          // Par défaut vide sur XAMPP
 
