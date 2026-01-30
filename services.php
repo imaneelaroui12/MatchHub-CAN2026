@@ -1,30 +1,52 @@
 <?php
-/* FICHIER : services.php */
+/* FICHIER : services.php (VERSION FINALE : Sites Officiels Uniquement) */
 session_start();
 require_once 'config/db.php';
 
-$msg_transport = "";
-$msg_hotel = "";
+$message = "";
 
-// TRAITEMENT DES FORMULAIRES
+// 1. TRAITEMENT PHP (Sauvegarde Locale pour ta note)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_SESSION['user_id'])) { header("Location: login.php"); exit; }
+    $id_user = $_SESSION['user_id'];
     
-    // Si on n'est pas connecté, on redirige vers le login
-    if (!isset($_SESSION['user_id'])) {
-        header("Location: login.php");
-        exit;
-    }
+    // On récupère la date
+    $date_resa = isset($_POST['date_resa']) ? $_POST['date_resa'] : date('Y-m-d');
 
-    // Cas 1 : Réservation Transport
+    // Cas Transport
     if (isset($_POST['btn_transport'])) {
-        $msg_transport = "<div style='background:#dcfce7; color:#166534; padding:15px; border-radius:10px; margin-bottom:15px;'>✅ Navette réservée avec succès ! (Simulation)</div>";
+        $id_trans = $_POST['transport_id'];
+        $stmt = $pdo->prepare("SELECT * FROM transports WHERE id_transport = ?");
+        $stmt->execute([$id_trans]);
+        $transport = $stmt->fetch();
+        if ($transport) {
+            $details = $transport['type'] . " - " . $transport['trajet'] . " ($date_resa)";
+            $sql = "INSERT INTO reservations_services (id_user, type_service, details, prix_total) VALUES (?, 'transport', ?, ?)";
+            $pdo->prepare($sql)->execute([$id_user, $details, $transport['prix']]);
+            $message = "<div class='alert success'>✅ Réservation Transport enregistrée !</div>";
+        }
     }
 
-    // Cas 2 : Recherche Hôtel
+    // Cas Hôtel
     if (isset($_POST['btn_hotel'])) {
-        $msg_hotel = "<div style='background:#dbeafe; color:#1e40af; padding:15px; border-radius:10px; margin-bottom:15px;'>ℹ️ Recherche effectuée : 3 Hôtels trouvés. (Simulation)</div>";
+        $id_hotel = $_POST['hotel_id'];
+        $nuits = $_POST['nuits'];
+        $stmt = $pdo->prepare("SELECT * FROM hotels WHERE id_hotel = ?");
+        $stmt->execute([$id_hotel]);
+        $hotel = $stmt->fetch();
+        if ($hotel) {
+            $prix_total = $hotel['prix_nuit'] * $nuits;
+            $details = "Hôtel : " . $hotel['nom_hotel'] . " ($nuits nuits le $date_resa)";
+            $sql = "INSERT INTO reservations_services (id_user, type_service, details, prix_total) VALUES (?, 'hotel', ?, ?)";
+            $pdo->prepare($sql)->execute([$id_user, $details, $prix_total]);
+            $message = "<div class='alert success'>✅ Réservation Hôtel enregistrée !</div>";
+        }
     }
 }
+
+// Récupération des données BDD
+$transports = $pdo->query("SELECT * FROM transports")->fetchAll();
+$hotels = $pdo->query("SELECT * FROM hotels ORDER BY ville")->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -38,17 +60,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         body { font-family: 'Poppins', sans-serif; background-color: #f3f4f6; margin: 0; }
         nav { background: linear-gradient(90deg, #064e3b 0%, #0d7a5d 100%); color: white; padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--gold); }
         .nav-links a { color: white; text-decoration: none; margin-left: 20px; font-weight: bold; }
-        .container { max-width: 800px; margin: 40px auto; padding: 20px; }
-        .service-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); margin-bottom: 40px; border-left: 5px solid var(--maroc-vert); }
-        .service-card h2 { margin-top: 0; color: #1f2937; }
-        label { display: block; margin-top: 15px; font-weight: 600; color: #4b5563; }
-        select, input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #e5e7eb; border-radius: 8px; font-family: inherit; box-sizing: border-box;}
-        .btn-service { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 1.1rem; transition: 0.3s; color: white; }
-        .btn-transport { background: #064e3b; }
-        .btn-transport:hover { background: #047857; }
-        .btn-hotel { background: #991b1b; }
-        .btn-hotel:hover { background: #7f1d1d; }
-        .note { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin-top: 20px; font-size: 0.9rem; color: #92400e; }
+        .container { max-width: 900px; margin: 40px auto; padding: 20px; }
+        .service-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); margin-bottom: 40px; border-left: 6px solid var(--maroc-vert); }
+        h2 { margin-top: 0; color: #1f2937; }
+        select, input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-reserve { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition:0.3s; }
+        .btn-transport { background: var(--maroc-vert); }
+        .btn-hotel { background: var(--maroc-rouge); }
+        
+        /* Bouton Site Officiel */
+        .btn-real { flex: 1; padding: 15px; background: white; border: 2px solid #ddd; border-radius: 8px; font-weight: bold; text-decoration: none; color: #333; text-align: center; cursor: pointer; transition:0.3s; }
+        .btn-real:hover { background: #eee; border-color: #999; }
+
+        .alert { padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; font-weight: bold; }
+        .success { background: #dcfce7; color: #166534; }
     </style>
 </head>
 <body>
@@ -56,10 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <nav>
     <div style="font-size: 1.5rem; font-weight: 800;">🏆 CAN 2026</div>
     <div class="nav-links">
-        <a href="index.php">Calendrier</a>
-        <a href="services.php" style="color:var(--gold)">Transport & Hôtels</a>
+        <a href="index.php">Accueil</a>
         <?php if(isset($_SESSION['user_id'])): ?>
-            <a href="logout.php">Déconnexion</a>
+            <a href="logout.php">Déco</a>
         <?php else: ?>
             <a href="login.php">Connexion</a>
         <?php endif; ?>
@@ -67,48 +93,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </nav>
 
 <div class="container">
+    <?= $message ?>
+
     <div class="service-card">
-        <h2>🚌 Transport & Navettes</h2>
-        <?= $msg_transport ?>
+        <h2>🚄 Transports Officiels</h2>
+        <p>Réservez vos trajets train et navette.</p>
         <form method="POST">
-            <label>Ville de départ :</label>
-            <select name="depart">
-                <option>Rabat (Gare Agdal / Ville)</option>
-                <option>Casablanca (Gare Voyageurs)</option>
-                <option>Aéroport Mohammed V</option>
+            <label><strong>1. Date de départ :</strong></label>
+            <input type="date" name="date_resa" id="dateTransport" required>
+
+            <label><strong>2. Trajet :</strong></label>
+            <select name="transport_id" id="selectTransport" required>
+                <?php foreach($transports as $t): ?>
+                    <option value="<?= $t['id_transport'] ?>" data-url="<?= $t['lien'] ?>">
+                        <?= $t['type'] ?> : <?= $t['trajet'] ?> (<?= $t['prix'] ?> DH)
+                    </option>
+                <?php endforeach; ?>
             </select>
-            <label>Stade de destination :</label>
-            <select name="destination">
-                <option>Rabat - Prince Moulay Abdellah</option>
-                <option>Casablanca - Stade Mohammed V</option>
-            </select>
-            <div class="note">💡 <strong>Note :</strong> Les navettes circulent 3h avant le match.</div>
-            <button type="submit" name="btn_transport" class="btn-service btn-transport">RÉSERVER NAVETTE (50 DH)</button>
+            
+            <div class="btn-group">
+                <button type="submit" name="btn_transport" class="btn-reserve btn-transport">RÉSERVER (LOCAL)</button>
+                <button type="button" onclick="goToRealSite('selectTransport')" class="btn-real">🌍 Site Officiel</button>
+            </div>
         </form>
     </div>
 
     <div class="service-card" style="border-left-color: var(--maroc-rouge);">
-        <h2>🏨 Hébergement Partenaire</h2>
-        <?= $msg_hotel ?>
+        <h2>🏨 Hôtels Partenaires</h2>
+        <p>Hébergements certifiés CAN 2026.</p>
         <form method="POST">
-            <label>Ville Hôte :</label>
-            <select name="ville">
-                <option>Rabat</option>
-                <option>Casablanca</option>
-                <option>Marrakech</option>
+            <label><strong>1. Date d'arrivée :</strong></label>
+            <input type="date" name="date_resa" id="dateHotel" required>
+
+            <label><strong>2. Hôtel :</strong></label>
+            <select name="hotel_id" id="selectHotel" required>
+                <?php foreach($hotels as $h): ?>
+                    <option value="<?= $h['id_hotel'] ?>" data-url="<?= $h['lien'] ?>">
+                        <?= $h['ville'] ?> - <?= $h['nom_hotel'] ?> (<?= $h['prix_nuit'] ?> DH/nuit)
+                    </option>
+                <?php endforeach; ?>
             </select>
-            <label>Type de logement :</label>
-            <select name="type">
-                <option>Hôtel 5★</option>
-                <option>Hôtel 4★</option>
-                <option>Appart'Hôtel</option>
-            </select>
-            <label>Nuitées :</label>
-            <input type="number" name="nuits" placeholder="Ex: 2" min="1">
-            <button type="submit" name="btn_hotel" class="btn-service btn-hotel">RECHERCHER DISPONIBILITÉS</button>
+            
+            <label><strong>3. Nombre de nuits :</strong></label>
+            <input type="number" name="nuits" value="1" min="1" required>
+
+            <div class="btn-group">
+                <button type="submit" name="btn_hotel" class="btn-reserve btn-hotel">RÉSERVER (LOCAL)</button>
+                <button type="button" onclick="goToRealSite('selectHotel')" class="btn-real">🌍 Site de l'Hôtel</button>
+            </div>
         </form>
     </div>
 </div>
+
+<script>
+    // Initialisation de la date d'aujourd'hui
+    let today = new Date().toISOString().split('T')[0];
+    document.getElementById("dateTransport").value = today;
+    document.getElementById("dateHotel").value = today;
+
+    /**
+     * FONCTION UNIQUE ET SIMPLE
+     * Elle ne calcule rien. Elle ouvre juste le lien stocké dans la base de données.
+     * Fini Booking.com !
+     */
+    function goToRealSite(selectId) {
+        // 1. On trouve le menu déroulant (Select)
+        let select = document.getElementById(selectId);
+        
+        // 2. On récupère le lien caché dans l'option sélectionnée (data-url)
+        let url = select.options[select.selectedIndex].getAttribute("data-url");
+        
+        // 3. On ouvre le lien
+        if(url && url !== '#' && url !== '') {
+            window.open(url, '_blank');
+        } else {
+            alert("Lien officiel non disponible.");
+        }
+    }
+</script>
 
 </body>
 </html>

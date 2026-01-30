@@ -1,41 +1,37 @@
 <?php
-/* FICHIER : login.php (Version compatible Base de Données Collègue) */
+/* FICHIER : login.php (Avec lien Inscription) */
 session_start();
 require_once 'config/db.php';
 
 $error = "";
+$success = "";
 
-// Si le formulaire est envoyé
+// Message de succès si on vient de s'inscrire
+if (isset($_GET['inscrit'])) {
+    $success = "✅ Compte créé ! Connectez-vous maintenant.";
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 1. On récupère l'email (et plus le username)
     $email = $_POST['email']; 
     $password = $_POST['password'];
 
-    // 2. On cherche l'utilisateur par son EMAIL
-    $sql = "SELECT * FROM users WHERE email = ?";
-    $stmt = $pdo->prepare($sql);
+    // Vérification dans la NOUVELLE table users
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // 3. Vérification du mot de passe
-    // Note : Dans un vrai projet, on utiliserait password_verify(), mais ta collègue n'a pas haché les mots de passe
     if ($user && $password === $user['password']) {
-        
-        // 4. On enregistre les bonnes infos en session
-        // ATTENTION : Dans sa base, c'est 'id_user' et 'nom'
         $_SESSION['user_id'] = $user['id_user']; 
-        $_SESSION['username'] = $user['nom']; // On garde 'username' pour l'affichage, mais on y met le nom
+        $_SESSION['username'] = $user['nom'];
         $_SESSION['role'] = $user['role'];
 
-       // LOGIQUE DE REDIRECTION SELON LE RÔLE
-if ($user['role'] === 'admin') {
-    // Si c'est l'admin, il va gérer les matchs
-    header("Location: admin/matches.php");
-} else {
-    // Si c'est un supporter, il retourne à l'accueil pour acheter
-    header("Location: index.php");
-}
-exit;
+        // Redirection intelligente
+        if ($user['role'] === 'admin') {
+            header("Location: admin/matches.php");
+        } else {
+            header("Location: index.php");
+        }
+        exit;
     } else {
         $error = "Email ou mot de passe incorrect !";
     }
@@ -51,31 +47,37 @@ exit;
     <style>
         body { font-family: 'Poppins', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
         .login-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 350px; text-align: center; }
-        h2 { color: #991b1b; margin-bottom: 20px; }
+        h2 { color: #064e3b; margin-bottom: 20px; }
         input { width: 100%; padding: 12px; margin: 10px 0; box-sizing: border-box; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; }
         button { width: 100%; padding: 12px; background: #064e3b; color: white; border: none; cursor: pointer; border-radius: 8px; font-weight: bold; margin-top: 10px; transition: 0.3s; }
         button:hover { background: #0d7a5d; }
-        .error { color: red; font-size: 0.9em; margin-bottom: 10px; }
-        .back-link { display: block; margin-top: 15px; color: #666; text-decoration: none; font-size: 0.9rem; }
-        .back-link:hover { color: #000; }
+        .error { color: red; background:#fee2e2; padding:10px; border-radius:5px; font-size: 0.9em; margin-bottom: 10px; }
+        .success { color: green; background:#dcfce7; padding:10px; border-radius:5px; font-size: 0.9em; margin-bottom: 10px; }
+        .links { margin-top: 20px; font-size: 0.9rem; }
+        .links a { color: #666; text-decoration: none; display:block; margin: 5px 0; }
+        .links a:hover { color: #000; text-decoration: underline; }
+        .register-link { color: #991b1b !important; font-weight:bold; }
     </style>
 </head>
 <body>
 
     <div class="login-box">
-        <h2>Espace Admin</h2>
+        <h2>Connexion</h2>
         
-        <?php if ($error): ?>
-            <p class="error"><?= $error ?></p>
-        <?php endif; ?>
+        <?php if ($error): ?> <div class="error"><?= $error ?></div> <?php endif; ?>
+        <?php if ($success): ?> <div class="success"><?= $success ?></div> <?php endif; ?>
 
         <form method="POST">
-            <input type="email" name="email" placeholder="Email (ex: admin@can2026.ma)" required>
+            <input type="email" name="email" placeholder="Email" required>
             <input type="password" name="password" placeholder="Mot de passe" required>
             <button type="submit">Se connecter</button>
         </form>
 
-        <a href="index.php" class="back-link">← Retour au site</a>
+        <div class="links">
+            <a href="inscription.php" class="register-link">Pas encore de compte ? S'inscrire</a>
+            
+            <a href="index.php">← Retour au site</a>
+        </div>
     </div>
 
 </body>
